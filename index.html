@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriVision AI - Free Client-Side Calorie Counter</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            900: '#14532d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for Macro Breakdown -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .dark .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+        }
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .animate-pulse-subtle {
+            animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen font-sans transition-colors duration-200 pb-16">
+
+    <!-- Header Navigation -->
+    <header class="border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 glass-panel">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center text-white shadow-lg shadow-brand-500/20">
+                    <i class="fa-solid font-bold text-xl fa-wand-magic-sparkles"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-tight">NutriVision <span class="text-brand-500">AI</span></h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span> 100% On-Device ML • Zero Server Costs
+                    </p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <!-- Status Badge -->
+                <div id="modelBadge" class="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                    <i class="fa-solid fa-microchip text-slate-400" id="badgeIcon"></i>
+                    <span id="badgeStatus" class="text-slate-600 dark:text-slate-300">Model Ready</span>
+                </div>
+                
+                <!-- Dark Mode Toggle -->
+                <button id="themeToggle" class="p-2 rounded-xl bg-slate-200/60 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors">
+                    <i class="fa-solid fa-moon dark:hidden"></i>
+                    <i class="fa-solid fa-sun hidden dark:block text-amber-400"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-6xl mx-auto px-4 pt-6 space-y-6">
+
+        <!-- Banner Info -->
+        <div class="bg-gradient-to-r from-emerald-900/20 via-slate-900/40 to-slate-900/20 dark:from-emerald-950/40 dark:to-slate-900/80 rounded-2xl p-4 sm:p-6 border border-brand-500/20 relative overflow-hidden">
+            <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-brand-500/10 text-brand-500 border border-brand-500/20 uppercase tracking-wider">
+                        Client-Side ML Architecture
+                    </span>
+                    <h2 class="text-xl sm:text-2xl font-bold mt-2">Instant Calorie Detection directly in your browser</h2>
+                    <p class="text-sm text-slate-400 max-w-2xl mt-1">
+                        No subscription fee, no image uploads to remote servers. Computer vision runs on your hardware via WebAssembly/WebGPU.
+                    </p>
+                </div>
+                <div class="flex items-center gap-3 text-xs text-slate-400 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                    <div class="text-center">
+                        <i class="fa-solid fa-shield-halved text-emerald-400 text-base mb-1 block"></i>
+                        <span>100% Private</span>
+                    </div>
+                    <div class="h-8 w-px bg-slate-800"></div>
+                    <div class="text-center">
+                        <i class="fa-solid fa-bolt text-amber-400 text-base mb-1 block"></i>
+                        <span>Zero API Fee</span>
+                    </div>
+                    <div class="h-8 w-px bg-slate-800"></div>
+                    <div class="text-center">
+                        <i class="fa-solid fa-wifi text-blue-400 text-base mb-1 block"></i>
+                        <span>Offline Capable</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- Left Column: Scanner & Image Upload -->
+            <section class="lg:col-span-7 space-y-6">
+                <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <h2 class="text-lg font-bold mb-4 flex items-center justify-between">
+                        <span><i class="fa-solid fa-camera text-brand-500 mr-2"></i> Food Scanner</span>
+                        <span class="text-xs font-normal text-slate-500">Food101 Vision Model</span>
+                    </h2>
+
+                    <!-- Dropzone -->
+                    <div id="dropzone" class="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand-500 dark:hover:border-brand-500 rounded-2xl p-6 text-center transition-all cursor-pointer bg-slate-50/50 dark:bg-slate-950/40 group relative overflow-hidden min-h-[260px] flex flex-col items-center justify-center">
+                        <input type="file" id="imageInput" accept="image/*" class="hidden">
+                        
+                        <!-- Default Drag/Drop Prompt -->
+                        <div id="dropPrompt" class="space-y-3">
+                            <div class="w-16 h-16 rounded-2xl bg-brand-50 dark:bg-slate-800 text-brand-600 dark:text-brand-400 mx-auto flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-slate-700 dark:text-slate-200">Drag & drop your food photo here</p>
+                                <p class="text-xs text-slate-400 mt-1">or click to browse from device / camera</p>
+                            </div>
+                            <div class="flex flex-wrap gap-2 justify-center pt-2">
+                                <span class="px-2 py-1 bg-slate-200/50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-md text-xs">Pizza</span>
+                                <span class="px-2 py-1 bg-slate-200/50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-md text-xs">Burger</span>
+                                <span class="px-2 py-1 bg-slate-200/50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-md text-xs">Sushi</span>
+                                <span class="px-2 py-1 bg-slate-200/50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-md text-xs">Salad</span>
+                            </div>
+                        </div>
+
+                        <!-- Image Preview -->
+                        <div id="previewContainer" class="hidden absolute inset-0 bg-slate-950 flex items-center justify-center">
+                            <img id="imagePreview" src="" alt="Food Preview" class="max-h-full max-w-full object-contain">
+                            <button id="clearImageBtn" class="absolute top-3 right-3 bg-slate-900/80 hover:bg-slate-900 text-white w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-sm transition-all z-10">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Actions & Model Download Indicator -->
+                    <div class="mt-4 space-y-3">
+                        <!-- Model Loading Progress -->
+                        <div id="modelProgressCard" class="hidden p-4 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
+                            <div class="flex justify-between text-xs font-semibold">
+                                <span id="modelProgressText" class="text-brand-600 dark:text-brand-400">Loading AI Vision Pipeline...</span>
+                                <span id="modelProgressPercent" class="text-slate-500">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
+                                <div id="modelProgressBar" class="bg-brand-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 italic">Models are cached locally in your IndexedDB for instant future loads.</p>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button id="scanBtn" disabled class="flex-1 py-3 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-brand-600/20 transition-all">
+                                <i class="fa-solid fa-bolt"></i>
+                                <span>Analyze Meal</span>
+                            </button>
+                            <button id="sampleBtn" class="py-3 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 font-medium text-slate-700 dark:text-slate-200 text-sm transition-all flex items-center gap-2">
+                                <i class="fa-solid fa-dice"></i>
+                                <span class="hidden sm:inline">Try Sample</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Prediction Results -->
+                <div id="resultsCard" class="hidden bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div>
+                            <h3 class="font-bold text-lg">AI Top Predictions</h3>
+                            <p class="text-xs text-slate-400">Ranked by classification confidence score</p>
+                        </div>
+                        <span id="inferenceTime" class="text-xs px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono">0ms</span>
+                    </div>
+
+                    <!-- Prediction list -->
+                    <div id="predictionsList" class="space-y-3">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <!-- Selected Item Adjuster -->
+                    <div id="adjusterSection" class="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h4 class="font-semibold text-sm">Selected Dish: <span id="selectedDishName" class="text-brand-500 capitalize">---</span></h4>
+                            <div class="flex items-center gap-2">
+                                <label class="text-xs text-slate-400">Portion Weight:</label>
+                                <span id="weightDisplay" class="text-sm font-bold font-mono">150g</span>
+                            </div>
+                        </div>
+
+                        <input type="range" id="weightSlider" min="20" max="800" step="10" value="150" class="w-full accent-brand-500">
+                        
+                        <!-- Quick Serving Presets -->
+                        <div class="flex gap-2">
+                            <button class="preset-btn flex-1 py-1 text-xs rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300" data-weight="100">Small (100g)</button>
+                            <button class="preset-btn flex-1 py-1 text-xs rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300" data-weight="200">Medium (200g)</button>
+                            <button class="preset-btn flex-1 py-1 text-xs rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300" data-weight="350">Large (350g)</button>
+                        </div>
+
+                        <!-- Macro Details Grid -->
+                        <div class="grid grid-cols-4 gap-2 text-center pt-2">
+                            <div class="p-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                                <span class="text-[10px] uppercase text-slate-400 block font-semibold">Calories</span>
+                                <span id="calcCals" class="text-sm sm:text-base font-bold text-amber-500">0</span>
+                                <span class="text-[10px] text-slate-400">kcal</span>
+                            </div>
+                            <div class="p-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                                <span class="text-[10px] uppercase text-slate-400 block font-semibold">Protein</span>
+                                <span id="calcProtein" class="text-sm sm:text-base font-bold text-emerald-500">0</span>
+                                <span class="text-[10px] text-slate-400">g</span>
+                            </div>
+                            <div class="p-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                                <span class="text-[10px] uppercase text-slate-400 block font-semibold">Carbs</span>
+                                <span id="calcCarbs" class="text-sm sm:text-base font-bold text-blue-500">0</span>
+                                <span class="text-[10px] text-slate-400">g</span>
+                            </div>
+                            <div class="p-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                                <span class="text-[10px] uppercase text-slate-400 block font-semibold">Fats</span>
+                                <span id="calcFat" class="text-sm sm:text-base font-bold text-rose-500">0</span>
+                                <span class="text-[10px] text-slate-400">g</span>
+                            </div>
+                        </div>
+
+                        <button id="addMealBtn" class="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                            <span>Add to Daily Log</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Column: Daily Macro Summary & Database Lookup -->
+            <section class="lg:col-span-5 space-y-6">
+                <!-- Daily Overview Card -->
+                <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-bold text-lg flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie text-brand-500"></i> Daily Log Summary
+                        </h3>
+                        <button id="clearLogBtn" class="text-xs text-rose-500 hover:text-rose-600 font-medium">Clear Log</button>
+                    </div>
+
+                    <!-- Macro Chart & Progress -->
+                    <div class="flex items-center gap-4">
+                        <div class="w-28 h-28 relative flex-shrink-0">
+                            <canvas id="macroChart"></canvas>
+                        </div>
+                        <div class="flex-1 space-y-2">
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-slate-400">Total Calories</span>
+                                    <span class="font-bold"><span id="dailyTotalCals">0</span> / 2000 kcal</span>
+                                </div>
+                                <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+                                    <div id="calsProgressBar" class="bg-amber-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Key Macros -->
+                            <div class="grid grid-cols-3 gap-1 text-center pt-1">
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block">Protein</span>
+                                    <span id="dailyProtein" class="text-xs font-bold text-emerald-500">0g</span>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block">Carbs</span>
+                                    <span id="dailyCarbs" class="text-xs font-bold text-blue-500">0g</span>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block">Fats</span>
+                                    <span id="dailyFats" class="text-xs font-bold text-rose-500">0g</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Logged Meals List -->
+                    <div class="space-y-2">
+                        <h4 class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Today's Meals</h4>
+                        <div id="loggedMealsList" class="max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 pr-1 text-xs">
+                            <p id="emptyLogMsg" class="py-4 text-center text-slate-400 italic">No meals logged yet today.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Food Database Quick Lookup Search -->
+                <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                    <h3 class="font-bold text-sm flex items-center justify-between">
+                        <span><i class="fa-solid fa-database text-slate-400 mr-2"></i> Local Nutrition Database</span>
+                        <span class="text-[11px] text-slate-400" id="dbCount">101 Dishes</span>
+                    </h3>
+
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-400"></i>
+                        <input type="text" id="dbSearch" placeholder="Manual search food (e.g. ramen, taco...)" class="w-full text-xs pl-8 pr-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-brand-500">
+                    </div>
+
+                    <div id="dbResultsList" class="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- App Logic Script -->
+    <script type="module">
+        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2';
+
+        // Configure local storage caching for models
+        env.allowLocalModels = false;
+        env.useBrowserCache = true;
+
+        // Static Local Nutrition Table per 100g (Food101 Label Mapping)
+        const NUTRITION_DB = {
+            "apple_pie": { calories: 237, protein: 1.9, carbs: 34, fat: 11, label: "Apple Pie" },
+            "baby_back_ribs": { calories: 290, protein: 24, carbs: 0, fat: 21, label: "Baby Back Ribs" },
+            "baklava": { calories: 428, protein: 7, carbs: 38, fat: 29, label: "Baklava" },
+            "beef_carpaccio": { calories: 210, protein: 20, carbs: 1, fat: 14, label: "Beef Carpaccio" },
+            "beef_tartare": { calories: 225, protein: 19, carbs: 2, fat: 15, label: "Beef Tartare" },
+            "beet_salad": { calories: 95, protein: 2.2, carbs: 11, fat: 5, label: "Beet Salad" },
+            "beignets": { calories: 412, protein: 6.5, carbs: 51, fat: 21, label: "Beignets" },
+            "bibimbap": { calories: 155, protein: 7.2, carbs: 22, fat: 4.5, label: "Bibimbap" },
+            "bread_pudding": { calories: 210, protein: 4.5, carbs: 32, fat: 7, label: "Bread Pudding" },
+            "breakfast_burrito": { calories: 240, protein: 11, carbs: 23, fat: 12, label: "Breakfast Burrito" },
+            "bruschetta": { calories: 180, protein: 4, carbs: 24, fat: 7.5, label: "Bruschetta" },
+            "caesar_salad": { calories: 184, protein: 4.5, carbs: 8, fat: 16, label: "Caesar Salad" },
+            "cannoli": { calories: 254, protein: 5.8, carbs: 27, fat: 14, label: "Cannoli" },
+            "caprese_salad": { calories: 172, protein: 8, carbs: 3.5, fat: 14, label: "Caprese Salad" },
+            "carrot_cake": { calories: 415, protein: 4, carbs: 52, fat: 22, label: "Carrot Cake" },
+            "ceviche": { calories: 118, protein: 15, carbs: 7, fat: 3, label: "Ceviche" },
+            "cheese_plate": { calories: 380, protein: 22, carbs: 3, fat: 31, label: "Cheese Plate" },
+            "cheesecake": { calories: 321, protein: 5.5, carbs: 25, fat: 22, label: "Cheesecake" },
+            "chicken_curry": { calories: 145, protein: 13, carbs: 8, fat: 7, label: "Chicken Curry" },
+            "chicken_quesadilla": { calories: 265, protein: 14, carbs: 22, fat: 14, label: "Chicken Quesadilla" },
+            "chicken_wings": { calories: 290, protein: 27, carbs: 0, fat: 20, label: "Chicken Wings" },
+            "chocolate_cake": { calories: 371, protein: 4.9, carbs: 53, fat: 17, label: "Chocolate Cake" },
+            "chocolate_mousse": { calories: 225, protein: 4.5, carbs: 22, fat: 14, label: "Chocolate Mousse" },
+            "churros": { calories: 447, protein: 4.6, carbs: 56, fat: 23, label: "Churros" },
+            "clam_chowder": { calories: 120, protein: 5, carbs: 12, fat: 6, label: "Clam Chowder" },
+            "club_sandwich": { calories: 235, protein: 13, carbs: 21, fat: 11, label: "Club Sandwich" },
+            "crab_cakes": { calories: 215, protein: 16, carbs: 11, fat: 12, label: "Crab Cakes" },
+            "creme_brulee": { calories: 340, protein: 4.5, carbs: 26, fat: 24, label: "Crème Brûlée" },
+            "croque_monsieur": { calories: 285, protein: 15, carbs: 20, fat: 16, label: "Croque Monsieur" },
+            "cup_cakes": { calories: 305, protein: 3, carbs: 50, fat: 11, label: "Cupcakes" },
+            "deviled_eggs": { calories: 200, protein: 12, carbs: 1, fat: 16, label: "Deviled Eggs" },
+            "donuts": { calories: 452, protein: 4.9, carbs: 51, fat: 25, label: "Donuts" },
+            "dumplings": { calories: 210, protein: 8, carbs: 28, fat: 7.5, label: "Dumplings" },
+            "eggs_benedict": { calories: 245, protein: 11, carbs: 14, fat: 16, label: "Eggs Benedict" },
+            "escargots": { calories: 220, protein: 16, carbs: 3, fat: 16, label: "Escargots" },
+            "falafel": { calories: 333, protein: 13, carbs: 31, fat: 18, label: "Falafel" },
+            "filet_mignon": { calories: 267, protein: 26, carbs: 0, fat: 17, label: "Filet Mignon" },
+            "fish_and_chips": { calories: 232, protein: 11, carbs: 22, fat: 11, label: "Fish and Chips" },
+            "foie_gras": { calories: 462, protein: 11, carbs: 4.5, fat: 44, label: "Foie Gras" },
+            "french_fries": { calories: 312, protein: 3.4, carbs: 41, fat: 15, label: "French Fries" },
+            "french_onion_soup": { calories: 85, protein: 4, carbs: 9, fat: 3.5, label: "French Onion Soup" },
+            "french_toast": { calories: 229, protein: 8, carbs: 28, fat: 9.5, label: "French Toast" },
+            "fried_calamari": { calories: 175, protein: 15, carbs: 12, fat: 7.5, label: "Fried Calamari" },
+            "fried_rice": { calories: 163, protein: 4.2, carbs: 28, fat: 4.1, label: "Fried Rice" },
+            "frozen_yogurt": { calories: 159, protein: 4, carbs: 24, fat: 5.4, label: "Frozen Yogurt" },
+            "garlic_bread": { calories: 350, protein: 8.4, carbs: 42, fat: 17, label: "Garlic Bread" },
+            "gnocchi": { calories: 180, protein: 4.5, carbs: 36, fat: 2, label: "Gnocchi" },
+            "greek_salad": { calories: 125, protein: 3.5, carbs: 6.5, fat: 9.5, label: "Greek Salad" },
+            "grilled_cheese_sandwich": { calories: 340, protein: 12, carbs: 30, fat: 19, label: "Grilled Cheese" },
+            "grilled_salmon": { calories: 206, protein: 22, carbs: 0, fat: 12, label: "Grilled Salmon" },
+            "guacamole": { calories: 160, protein: 2, carbs: 9, fat: 15, label: "Guacamole" },
+            "gyoza": { calories: 200, protein: 7.5, carbs: 24, fat: 8.5, label: "Gyoza" },
+            "hamburger": { calories: 254, protein: 17, carbs: 20, fat: 12, label: "Hamburger" },
+            "hot_and_sour_soup": { calories: 55, protein: 3.5, carbs: 6, fat: 2, label: "Hot & Sour Soup" },
+            "hot_dog": { calories: 290, protein: 10, carbs: 24, fat: 17, label: "Hot Dog" },
+            "huevos_rancheros": { calories: 165, protein: 8.5, carbs: 14, fat: 8.5, label: "Huevos Rancheros" },
+            "hummus": { calories: 166, protein: 7.9, carbs: 14, fat: 9.6, label: "Hummus" },
+            "ice_cream": { calories: 207, protein: 3.5, carbs: 24, fat: 11, label: "Ice Cream" },
+            "lasagna": { calories: 175, protein: 9.5, carbs: 15, fat: 8.5, label: "Lasagna" },
+            "lobster_bisque": { calories: 140, protein: 5.5, carbs: 9, fat: 9.5, label: "Lobster Bisque" },
+            "lobster_roll_sandwich": { calories: 240, protein: 14, carbs: 20, fat: 11, label: "Lobster Roll" },
+            "macaroni_and_cheese": { calories: 210, protein: 8, carbs: 24, fat: 9.5, label: "Macaroni & Cheese" },
+            "macarons": { calories: 450, protein: 7, carbs: 58, fat: 22, label: "Macarons" },
+            "miso_soup": { calories: 40, protein: 3, carbs: 5, fat: 1.2, label: "Miso Soup" },
+            "mussels": { calories: 172, protein: 24, carbs: 7, fat: 4.5, label: "Mussels" },
+            "nachos": { calories: 306, protein: 8, carbs: 32, fat: 17, label: "Nachos" },
+            "omelette": { calories: 154, protein: 11, carbs: 0.6, fat: 12, label: "Omelette" },
+            "onion_rings": { calories: 411, protein: 4.8, carbs: 44, fat: 24, label: "Onion Rings" },
+            "oysters": { calories: 81, protein: 9.5, carbs: 4.9, fat: 2.3, label: "Oysters" },
+            "pad_thai": { calories: 195, protein: 8.5, carbs: 28, fat: 6, label: "Pad Thai" },
+            "paella": { calories: 156, protein: 8, carbs: 23, fat: 3.8, label: "Paella" },
+            "pancakes": { calories: 227, protein: 6, carbs: 38, fat: 6, label: "Pancakes" },
+            "panna_cotta": { calories: 280, protein: 3, carbs: 24, fat: 19, label: "Panna Cotta" },
+            "peking_duck": { calories: 337, protein: 19, carbs: 0, fat: 28, label: "Peking Duck" },
+            "pho": { calories: 95, protein: 7, carbs: 12, fat: 2, label: "Pho" },
+            "pizza": { calories: 266, protein: 11, carbs: 33, fat: 10, label: "Pizza" },
+            "pork_chop": { calories: 231, protein: 24, carbs: 0, fat: 14, label: "Pork Chop" },
+            "poutine": { calories: 260, protein: 6, carbs: 28, fat: 14, label: "Poutine" },
+            "prime_rib": { calories: 330, protein: 21, carbs: 0, fat: 27, label: "Prime Rib" },
+            "pulled_pork_sandwich": { calories: 245, protein: 16, carbs: 22, fat: 10, label: "Pulled Pork Sandwich" },
+            "ramen": { calories: 140, protein: 5, carbs: 19, fat: 5, label: "Ramen" },
+            "ravioli": { calories: 200, protein: 8, carbs: 28, fat: 6.5, label: "Ravioli" },
+            "red_velvet_cake": { calories: 375, protein: 4.2, carbs: 48, fat: 19, label: "Red Velvet Cake" },
+            "risotto": { calories: 168, protein: 4.2, carbs: 22, fat: 7, label: "Risotto" },
+            "samosa": { calories: 262, protein: 4.5, carbs: 32, fat: 13, label: "Samosa" },
+            "sashimi": { calories: 127, protein: 20, carbs: 0, fat: 4.5, label: "Sashimi" },
+            "scallops": { calories: 111, protein: 20, carbs: 5.4, fat: 0.8, label: "Scallops" },
+            "seaweed_salad": { calories: 70, protein: 1.5, carbs: 9, fat: 3, label: "Seaweed Salad" },
+            "shrimp_and_grits": { calories: 185, protein: 10, carbs: 16, fat: 8.5, label: "Shrimp and Grits" },
+            "spaghetti_bolognese": { calories: 152, protein: 8, carbs: 18, fat: 5.2, label: "Spaghetti Bolognese" },
+            "spaghetti_carbonara": { calories: 220, protein: 9.5, carbs: 22, fat: 10.5, label: "Spaghetti Carbonara" },
+            "spring_rolls": { calories: 150, protein: 4.5, carbs: 20, fat: 6, label: "Spring Rolls" },
+            "steak": { calories: 271, protein: 25, carbs: 0, fat: 19, label: "Steak" },
+            "strawberry_shortcake": { calories: 290, protein: 3.8, carbs: 42, fat: 12, label: "Strawberry Shortcake" },
+            "sushi": { calories: 143, protein: 4.5, carbs: 28, fat: 1.2, label: "Sushi" },
+            "tacos": { calories: 226, protein: 12, carbs: 20, fat: 11, label: "Tacos" },
+            "takoyaki": { calories: 175, protein: 6, carbs: 21, fat: 7.2, label: "Takoyaki" },
+            "tiramisu": { calories: 283, protein: 5.4, carbs: 30, fat: 15, label: "Tiramisu" },
+            "tuna_tartare": { calories: 150, protein: 22, carbs: 2, fat: 6, label: "Tuna Tartare" },
+            "waffles": { calories: 291, protein: 7.9, carbs: 37, fat: 13, label: "Waffles" }
+        };
+
+        // Application State
+        let classifier = null;
+        let isModelLoading = false;
+        let selectedImageData = null;
+        let currentPredictions = [];
+        let selectedFoodItem = null;
+        let dailyMeals = [];
+        let chartInstance = null;
+
+        // DOM Elements
+        const dropzone = document.getElementById('dropzone');
+        const imageInput = document.getElementById('imageInput');
+        const dropPrompt = document.getElementById('dropPrompt');
+        const previewContainer = document.getElementById('previewContainer');
+        const imagePreview = document.getElementById('imagePreview');
+        const clearImageBtn = document.getElementById('clearImageBtn');
+        const scanBtn = document.getElementById('scanBtn');
+        const sampleBtn = document.getElementById('sampleBtn');
+        
+        const modelProgressCard = document.getElementById('modelProgressCard');
+        const modelProgressBar = document.getElementById('modelProgressBar');
+        const modelProgressText = document.getElementById('modelProgressText');
+        const modelProgressPercent = document.getElementById('modelProgressPercent');
+        const badgeStatus = document.getElementById('badgeStatus');
+        const badgeIcon = document.getElementById('badgeIcon');
+
+        const resultsCard = document.getElementById('resultsCard');
+        const predictionsList = document.getElementById('predictionsList');
+        const inferenceTime = document.getElementById('inferenceTime');
+        const selectedDishName = document.getElementById('selectedDishName');
+        const weightSlider = document.getElementById('weightSlider');
+        const weightDisplay = document.getElementById('weightDisplay');
+        
+        const calcCals = document.getElementById('calcCals');
+        const calcProtein = document.getElementById('calcProtein');
+        const calcCarbs = document.getElementById('calcCarbs');
+        const calcFat = document.getElementById('calcFat');
+        const addMealBtn = document.getElementById('addMealBtn');
+
+        const dailyTotalCals = document.getElementById('dailyTotalCals');
+        const calsProgressBar = document.getElementById('calsProgressBar');
+        const dailyProtein = document.getElementById('dailyProtein');
+        const dailyCarbs = document.getElementById('dailyCarbs');
+        const dailyFats = document.getElementById('dailyFats');
+        const loggedMealsList = document.getElementById('loggedMealsList');
+        const emptyLogMsg = document.getElementById('emptyLogMsg');
+        const clearLogBtn = document.getElementById('clearLogBtn');
+
+        const dbSearch = document.getElementById('dbSearch');
+        const dbResultsList = document.getElementById('dbResultsList');
+        const themeToggle = document.getElementById('themeToggle');
+
+        // Initializer
+        window.addEventListener('DOMContentLoaded', () => {
+            initChart();
+            renderDatabaseList('');
+            setupTheme();
+        });
+
+        // Initialize Transformers.js Vision Classifier Pipeline
+        async function loadModel() {
+            if (classifier) return classifier;
+            
+            isModelLoading = true;
+            modelProgressCard.classList.remove('hidden');
+            badgeStatus.innerText = "Loading Model...";
+            badgeIcon.className = "fa-solid fa-spinner animate-spin text-amber-500";
+
+            try {
+                // Using lightweight MobileNetV2 fine-tuned on Food101 for fast browser execution
+                classifier = await pipeline('image-classification', 'Xenova/food101', {
+                    progress_callback: (progress) => {
+                        if (progress.status === 'downloading' || progress.status === 'progress') {
+                            const pct = Math.round((progress.loaded / progress.total) * 100) || 0;
+                            modelProgressBar.style.width = `${pct}%`;
+                            modelProgressPercent.innerText = `${pct}%`;
+                            modelProgressText.innerText = `Downloading model weights (${progress.file || ''})...`;
+                        } else if (progress.status === 'done') {
+                            modelProgressText.innerText = `Initializing ONNX runtime...`;
+                        }
+                    }
+                });
+
+                badgeStatus.innerText = "Model Active";
+                badgeIcon.className = "fa-solid fa-check text-emerald-500";
+                modelProgressCard.classList.add('hidden');
+                isModelLoading = false;
+                return classifier;
+            } catch (err) {
+                console.error("Failed to load Transformers model:", err);
+                modelProgressText.innerText = "Model load failed. Check browser compatibility.";
+                modelProgressBar.classList.replace('bg-brand-500', 'bg-rose-500');
+                badgeStatus.innerText = "Error";
+                badgeIcon.className = "fa-solid fa-triangle-exclamation text-rose-500";
+                isModelLoading = false;
+                throw err;
+            }
+        }
+
+        // Handle Image Selection
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                selectedImageData = e.target.result;
+                imagePreview.src = selectedImageData;
+                dropPrompt.classList.add('hidden');
+                previewContainer.classList.remove('hidden');
+                scanBtn.disabled = false;
+                resultsCard.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Drag & Drop Listeners
+        dropzone.addEventListener('click', () => imageInput.click());
+        imageInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+        
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('border-brand-500', 'bg-brand-50/10');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('border-brand-500', 'bg-brand-50/10');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('border-brand-500', 'bg-brand-50/10');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        clearImageBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectedImageData = null;
+            imagePreview.src = '';
+            previewContainer.classList.add('hidden');
+            dropPrompt.classList.remove('hidden');
+            scanBtn.disabled = true;
+            resultsCard.classList.add('hidden');
+        });
+
+        // Sample Dish Handler
+        sampleBtn.addEventListener('click', () => {
+            // High quality sample pizza image from Unsplash
+            const sampleUrl = 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80';
+            selectedImageData = sampleUrl;
+            imagePreview.src = sampleUrl;
+            dropPrompt.classList.add('hidden');
+            previewContainer.classList.remove('hidden');
+            scanBtn.disabled = false;
+            resultsCard.classList.add('hidden');
+        });
+
+        // Run Classification Pipeline
+        scanBtn.addEventListener('click', async () => {
+            if (!selectedImageData) return;
+
+            scanBtn.disabled = true;
+            scanBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Analyzing local ML...`;
+
+            const startTime = performance.now();
+            try {
+                const model = await loadModel();
+                const output = await model(selectedImageData, { topk: 3 });
+                const endTime = performance.now();
+                
+                inferenceTime.innerText = `${Math.round(endTime - startTime)}ms`;
+                currentPredictions = output;
+                renderPredictions(output);
+            } catch (error) {
+                alert("Failed to analyze image with local model.");
+                console.error(error);
+            } finally {
+                scanBtn.disabled = false;
+                scanBtn.innerHTML = `<i class="fa-solid fa-bolt"></i> Analyze Meal`;
+            }
+        });
+
+        // Display AI Results
+        function renderPredictions(preds) {
+            resultsCard.classList.remove('hidden');
+            predictionsList.innerHTML = '';
+
+            preds.forEach((pred, index) => {
+                const cleanKey = pred.label.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                const matchedData = NUTRITION_DB[cleanKey] || { calories: 180, protein: 8, carbs: 20, fat: 7, label: pred.label.replace(/_/g, ' ') };
+                const confidence = Math.round(pred.score * 100);
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${index === 0 ? 'border-brand-500/50 bg-brand-50/20 dark:bg-brand-900/10' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'}`;
+                
+                itemDiv.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <input type="radio" name="prediction" id="pred_${index}" ${index === 0 ? 'checked' : ''} class="accent-brand-500">
+                        <div>
+                            <label for="pred_${index}" class="font-semibold text-sm capitalize cursor-pointer">${matchedData.label}</label>
+                            <div class="text-[11px] text-slate-400">~${matchedData.calories} kcal / 100g</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs font-bold font-mono ${confidence > 60 ? 'text-emerald-500' : 'text-amber-500'}">${confidence}%</span>
+                        <div class="w-16 bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-1 overflow-hidden">
+                            <div class="bg-brand-500 h-1.5 rounded-full" style="width: ${confidence}%"></div>
+                        </div>
+                    </div>
+                `;
+
+                itemDiv.addEventListener('click', () => {
+                    document.getElementById(`pred_${index}`).checked = true;
+                    selectDish(matchedData);
+                });
+
+                predictionsList.appendChild(itemDiv);
+            });
+
+            // Select top prediction by default
+            const topCleanKey = preds[0].label.toLowerCase().replace(/[^a-z0-9_]/g, '');
+            const topMatched = NUTRITION_DB[topCleanKey] || { calories: 180, protein: 8, carbs: 20, fat: 7, label: preds[0].label.replace(/_/g, ' ') };
+            selectDish(topMatched);
+        }
+
+        function selectDish(nutritionObj) {
+            selectedFoodItem = nutritionObj;
+            selectedDishName.innerText = nutritionObj.label;
+            calculateMacros();
+        }
+
+        // Portion Slider Logic
+        weightSlider.addEventListener('input', (e) => {
+            weightDisplay.innerText = `${e.target.value}g`;
+            calculateMacros();
+        });
+
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const w = e.target.getAttribute('data-weight');
+                weightSlider.value = w;
+                weightDisplay.innerText = `${w}g`;
+                calculateMacros();
+            });
+        });
+
+        function calculateMacros() {
+            if (!selectedFoodItem) return;
+            const factor = parseFloat(weightSlider.value) / 100;
+            
+            calcCals.innerText = Math.round(selectedFoodItem.calories * factor);
+            calcProtein.innerText = (selectedFoodItem.protein * factor).toFixed(1);
+            calcCarbs.innerText = (selectedFoodItem.carbs * factor).toFixed(1);
+            calcFat.innerText = (selectedFoodItem.fat * factor).toFixed(1);
+        }
+
+        // Daily Tracker Logging
+        addMealBtn.addEventListener('click', () => {
+            if (!selectedFoodItem) return;
+            const weight = parseFloat(weightSlider.value);
+            const factor = weight / 100;
+
+            const mealEntry = {
+                id: Date.now(),
+                name: selectedFoodItem.label,
+                weight: weight,
+                calories: Math.round(selectedFoodItem.calories * factor),
+                protein: parseFloat((selectedFoodItem.protein * factor).toFixed(1)),
+                carbs: parseFloat((selectedFoodItem.carbs * factor).toFixed(1)),
+                fat: parseFloat((selectedFoodItem.fat * factor).toFixed(1))
+            };
+
+            dailyMeals.unshift(mealEntry);
+            updateDailyOverview();
+        });
+
+        clearLogBtn.addEventListener('click', () => {
+            dailyMeals = [];
+            updateDailyOverview();
+        });
+
+        function updateDailyOverview() {
+            let totalCals = 0;
+            let totalP = 0;
+            let totalC = 0;
+            let totalF = 0;
+
+            loggedMealsList.innerHTML = '';
+
+            if (dailyMeals.length === 0) {
+                emptyLogMsg.style.display = 'block';
+            } else {
+                emptyLogMsg.style.display = 'none';
+                dailyMeals.forEach(meal => {
+                    totalCals += meal.calories;
+                    totalP += meal.protein;
+                    totalC += meal.carbs;
+                    totalF += meal.fat;
+
+                    const row = document.createElement('div');
+                    row.className = 'py-2 flex justify-between items-center';
+                    row.innerHTML = `
+                        <div>
+                            <span class="font-medium text-slate-700 dark:text-slate-200">${meal.name}</span>
+                            <span class="text-[10px] text-slate-400 block">${meal.weight}g</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="font-mono font-bold text-amber-500">+${meal.calories} kcal</span>
+                            <button class="delete-meal text-slate-400 hover:text-rose-500" data-id="${meal.id}"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    `;
+                    loggedMealsList.appendChild(row);
+                });
+            }
+
+            // Update UI Counters
+            dailyTotalCals.innerText = totalCals;
+            dailyProtein.innerText = `${totalP.toFixed(1)}g`;
+            dailyCarbs.innerText = `${totalC.toFixed(1)}g`;
+            dailyFats.innerText = `${totalF.toFixed(1)}g`;
+
+            const pct = Math.min(100, Math.round((totalCals / 2000) * 100));
+            calsProgressBar.style.width = `${pct}%`;
+
+            // Update Chart
+            updateChart(totalP, totalC, totalF);
+
+            // Bind delete events
+            document.querySelectorAll('.delete-meal').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = parseInt(e.currentTarget.getAttribute('data-id'));
+                    dailyMeals = dailyMeals.filter(m => m.id !== id);
+                    updateDailyOverview();
+                });
+            });
+        }
+
+        // Chart.js Donut Initialization
+        function initChart() {
+            const ctx = document.getElementById('macroChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Protein', 'Carbs', 'Fats'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: ['#10b981', '#3b82f6', '#f43f5e'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: true }
+                    },
+                    cutout: '75%'
+                }
+            });
+        }
+
+        function updateChart(p, c, f) {
+            if (!chartInstance) return;
+            if (p === 0 && c === 0 && f === 0) {
+                chartInstance.data.datasets[0].data = [1, 1, 1];
+                chartInstance.data.datasets[0].backgroundColor = ['#334155', '#334155', '#334155'];
+            } else {
+                chartInstance.data.datasets[0].data = [p, c, f];
+                chartInstance.data.datasets[0].backgroundColor = ['#10b981', '#3b82f6', '#f43f5e'];
+            }
+            chartInstance.update();
+        }
+
+        // Database Manual Search List Render
+        function renderDatabaseList(filter = '') {
+            dbResultsList.innerHTML = '';
+            const keys = Object.keys(NUTRITION_DB).filter(k => 
+                NUTRITION_DB[k].label.toLowerCase().includes(filter.toLowerCase())
+            );
+
+            document.getElementById('dbCount').innerText = `${keys.length} Dishes`;
+
+            keys.forEach(k => {
+                const item = NUTRITION_DB[k];
+                const div = document.createElement('div');
+                div.className = 'p-2 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-brand-500 cursor-pointer flex justify-between items-center transition-all';
+                div.innerHTML = `
+                    <span class="text-xs font-medium">${item.label}</span>
+                    <span class="text-[11px] font-mono text-slate-400">${item.calories} kcal/100g</span>
+                `;
+                div.addEventListener('click', () => {
+                    selectDish(item);
+                    resultsCard.classList.remove('hidden');
+                    predictionsList.innerHTML = `<div class="p-2 text-xs text-brand-500 font-semibold">Selected manually from database</div>`;
+                });
+                dbResultsList.appendChild(div);
+            });
+        }
+
+        dbSearch.addEventListener('input', (e) => renderDatabaseList(e.target.value));
+
+        // Dark mode setup
+        function setupTheme() {
+            themeToggle.addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+            });
+        }
+    </script>
+</body>
+</html>
